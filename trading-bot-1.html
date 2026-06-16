@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradingBot AR — Binance</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#060B14;color:#EAECEF;font-family:'Inter',system-ui,sans-serif;min-height:100vh}
+:root{--accent:#F0B90B;--green:#0ECB81;--red:#F6465D;--panel:#0D1520;--card:#111E2E;--border:#1A2D45;--ts:#848E9C}
+input,select,button{font-family:inherit;outline:none}
+button{cursor:pointer}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* Header */
+.header{background:var(--panel);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:100}
+.logo{width:32px;height:32px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#060B14}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--ts)}
+.status-dot.active{background:var(--green);animation:pulse 1.5s infinite}
+
+/* Tabs */
+.tabs{background:var(--panel);border-bottom:1px solid var(--border);display:flex;overflow-x:auto}
+.tab{padding:12px 16px;font-size:13px;font-weight:600;border:none;background:transparent;color:var(--ts);border-bottom:2px solid transparent;white-space:nowrap;cursor:pointer;transition:color .2s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* Content */
+.content{max-width:900px;margin:0 auto;padding:16px}
+.section{display:none}
+.section.active{display:block}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
+.card-title{color:var(--accent);font-weight:700;font-size:14px;margin-bottom:12px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.metric{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px}
+.metric-label{color:var(--ts);font-size:11px;margin-bottom:5px}
+.metric-value{font-size:20px;font-weight:800}
+.metric-sub{color:var(--ts);font-size:11px;margin-top:3px}
+
+/* Inputs */
+.field{margin-bottom:12px}
+.field label{color:var(--ts);font-size:12px;display:block;margin-bottom:5px}
+.field input,.field select{width:100%;background:#0D1520;border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:#EAECEF;font-size:14px}
+.field select option{background:#0D1520}
+
+/* Buttons */
+.btn-primary{width:100%;background:var(--accent);color:#060B14;border:none;border-radius:10px;padding:13px;font-weight:800;font-size:14px}
+.btn-secondary{background:#1A2D45;border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--ts);font-size:12px;font-weight:600}
+.btn-green{background:var(--green);border:none;border-radius:8px;padding:8px 22px;color:#060B14;font-weight:700;font-size:13px}
+.btn-red{background:transparent;border:1px solid var(--red);border-radius:8px;padding:8px 22px;color:var(--red);font-weight:700;font-size:13px}
+
+/* Strategy pills */
+.strategy{padding:11px 13px;border-radius:9px;margin-bottom:7px;cursor:pointer;background:#0D1520;border:1px solid var(--border);transition:all .2s}
+.strategy.selected{background:#F0B90B18;border-color:var(--accent)}
+.strategy-label{font-weight:600;font-size:13px;color:#EAECEF}
+.strategy.selected .strategy-label{color:var(--accent)}
+.strategy-desc{color:var(--ts);font-size:11px;margin-top:2px}
+
+/* Signal grid */
+.signals-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.signal-card{background:#0D1520;border:1px solid var(--border);border-radius:10px;padding:12px}
+.signal-card.buy{border-color:var(--green)}
+.signal-card.sell{border-color:var(--red)}
+.signal-badge{font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px}
+.signal-badge.BUY{background:#0ECB8122;color:var(--green)}
+.signal-badge.SELL{background:#F6465D22;color:var(--red)}
+.signal-badge.HOLD{background:#848E9C22;color:var(--ts)}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:16px;left:16px;z-index:999;background:var(--card);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 24px rgba(0,0,0,.5);transition:opacity .3s;max-width:400px;margin:0 auto}
+.toast.hidden{opacity:0;pointer-events:none}
+
+/* Pairs */
+.pairs-strip{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:14px}
+.pair-btn{flex-shrink:0;padding:7px 12px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--ts);cursor:pointer;text-align:left}
+.pair-btn.active{border-color:var(--accent);background:#F0B90B18;color:var(--accent)}
+
+/* Table */
+.table-header{display:grid;grid-template-columns:70px 1fr 70px 1fr 80px;padding:9px 14px;background:#0D1520;color:var(--ts);font-size:11px;font-weight:700;letter-spacing:.5px}
+.table-row{display:grid;grid-template-columns:70px 1fr 70px 1fr 80px;padding:11px 14px;border-top:1px solid var(--border);align-items:center;font-size:12px}
+
+/* Step */
+.step{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.step-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;background:#2B3C52;color:var(--ts)}
+.step-num.done{background:var(--green);color:#060B14}
+.step-num.active{background:var(--accent);color:#060B14}
+.step-text{font-size:13px;color:var(--ts)}
+.step-text.active{color:#EAECEF;font-weight:600}
+.step-text.done{color:var(--green)}
+
+/* Range */
+input[type=range]{accent-color:var(--accent);width:100%}
+
+/* Sym toggle */
+.sym-btn{padding:5px 11px;border-radius:7px;font-size:12px;font-weight:600;border:1px solid var(--border);background:#0D1520;color:var(--ts);cursor:pointer}
+.sym-btn.active{border-color:var(--accent);background:#F0B90B18;color:var(--accent)}
+
+/* Warning box */
+.warning{background:#F0B90B15;border:1px solid #F0B90B33;border-radius:8px;padding:10px;font-size:12px;color:var(--ts);line-height:1.5;margin-bottom:12px}
+.warning strong{color:var(--accent)}
+
+/* Balance row */
+.balance-chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:#0D1520;border-radius:8px;padding:7px 12px;font-size:12px}
+.chip strong{font-size:13px}
+
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="logo">B</div>
+    <div>
+      <div style="font-weight:800;font-size:15px">TradingBot AR</div>
+      <div style="color:var(--ts);font-size:10px">Binance Real · ARS/USD</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div style="display:flex;align-items:center;gap:5px">
+      <div class="status-dot" id="botDot"></div>
+      <span style="font-size:11px;color:var(--ts)" id="botLabel">BOT OFF</span>
+    </div>
+    <div id="connBadge" style="background:#1A2D45;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--ts)">○ Sin conectar</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="showTab('setup')">Configurar</button>
+  <button class="tab" onclick="showTab('dashboard')">Dashboard</button>
+  <button class="tab" onclick="showTab('markets')">Mercados</button>
+  <button class="tab" onclick="showTab('history')">Historial</button>
+  <button class="tab" onclick="showTab('withdraw')">Retirar</button>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+<!-- SETUP -->
+<div id="tab-setup" class="section active">
+  <div class="card">
+    <div class="card-title">Guía de conexión</div>
+    <div class="step"><div class="step-num done">✓</div><div class="step-text done">Crear API Key en Binance</div></div>
+    <div class="step"><div class="step-num done">✓</div><div class="step-text done">Subir backend a Railway</div></div>
+    <div class="step"><div class="step-num active" id="step3num">3</div><div class="step-text active" id="step3text">Pegar URL de Railway y conectar</div></div>
+    <div class="step"><div class="step-num" id="step4num">4</div><div class="step-text" id="step4text">Ingresar capital y configurar bot</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">URL del Backend (Railway)</div>
+    <div class="field">
+      <label>Tu URL de Railway</label>
+      <input id="backendURL" placeholder="https://binance-poxy-production.up.railway.app" type="url">
+    </div>
+    <button class="btn-primary" onclick="handleConnect()" id="connectBtn">Conectar a Binance →</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Tu Capital</div>
+    <div class="field"><label>Pesos Argentinos (ARS)</label><input id="capARS" type="number" placeholder="Ej: 500000"></div>
+    <div class="field"><label>Dólares (USD)</label><input id="capUSD" type="number" placeholder="Ej: 100"></div>
+    <div class="field"><label>Tipo de cambio blue ARS/USD</label><input id="arsRate" type="number" value="1250"></div>
+    <div style="background:#0D1520;border-radius:8px;padding:11px;display:flex;justify-content:space-between;align-items:center">
+      <span style="color:var(--ts);font-size:13px">Total en USD</span>
+      <span style="color:var(--accent);font-weight:800;font-size:16px" id="totalUSD">$0.00 USD</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Estrategia</div>
+    <div class="strategy selected" onclick="selectStrategy('rsi',this)"><div class="strategy-label">RSI Reversión</div><div class="strategy-desc">Compra en sobreventa &lt;30, vende en sobrecompra &gt;70</div></div>
+    <div class="strategy" onclick="selectStrategy('macd',this)"><div class="strategy-label">MACD Cruce</div><div class="strategy-desc">Opera cuando la línea MACD cruza la señal</div></div>
+    <div class="strategy" onclick="selectStrategy('bb',this)"><div class="strategy-label">Bollinger Bands</div><div class="strategy-desc">Compra en banda inferior, vende en banda superior</div></div>
+    <div class="strategy" onclick="selectStrategy('combo',this)"><div class="strategy-label">Combo 2/3 ⭐</div><div class="strategy-desc">Necesita 2 de 3 indicadores de acuerdo (recomendado)</div></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+      <span style="font-weight:700;font-size:14px;color:var(--accent)">Riesgo por trade</span>
+      <span style="font-weight:800;font-size:16px" id="riskLabel">2%</span>
+    </div>
+    <input type="range" min="0.5" max="10" step="0.5" value="2" id="riskRange" oninput="updateRisk(this.value)">
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--ts)">
+      <span>0.5% conservador</span><span>10% agresivo</span>
+    </div>
+    <div style="background:#0D1520;border-radius:8px;padding:9px;margin-top:10px;font-size:12px;color:var(--ts)" id="riskInfo">
+      Por trade: <strong style="color:#EAECEF">$0.00 USD</strong>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Pares a operar</div>
+    <div style="color:var(--ts);font-size:11px;font-weight:700;margin-bottom:8px">CRYPTO</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px" id="cryptoBtns">
+      <button class="sym-btn active" onclick="toggleSym('BTCUSDT',this)">BTC</button>
+      <button class="sym-btn active" onclick="toggleSym('ETHUSDT',this)">ETH</button>
+      <button class="sym-btn" onclick="toggleSym('BNBUSDT',this)">BNB</button>
+      <button class="sym-btn" onclick="toggleSym('SOLUSDT',this)">SOL</button>
+      <button class="sym-btn" onclick="toggleSym('XRPUSDT',this)">XRP</button>
+      <button class="sym-btn" onclick="toggleSym('ADAUSDT',this)">ADA</button>
+      <button class="sym-btn" onclick="toggleSym('DOGEUSDT',this)">DOGE</button>
+      <button class="sym-btn" onclick="toggleSym('AVAXUSDT',this)">AVAX</button>
+    </div>
+    <div style="color:var(--ts);font-size:11px;font-weight:700;margin-bottom:8px">FOREX</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <button class="sym-btn" onclick="toggleSym('EURUSDT',this)">EUR/USD</button>
+      <button class="sym-btn" onclick="toggleSym('GBPUSDT',this)">GBP/USD</button>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="tab-dashboard" class="section">
+  <div id="noconn" style="text-align:center;padding:60px 20px">
+    <div style="font-size:44px;margin-bottom:14px">🔌</div>
+    <div style="font-size:20px;font-weight:800;margin-bottom:8px">No conectado</div>
+    <div style="color:var(--ts);margin-bottom:20px">Completa la configuración primero</div>
+    <button class="btn-primary" style="max-width:200px;margin:0 auto;display:block" onclick="showTab('setup')">Ir a Configurar →</button>
+  </div>
+  <div id="dashboard-content" style="display:none">
+    <div class="grid-2" style="margin-bottom:12px">
+      <div class="metric"><div class="metric-label">Capital Total</div><div class="metric-value" id="m-total">$0.00</div><div class="metric-sub">USD</div></div>
+      <div class="metric"><div class="metric-label">P&L</div><div class="metric-value" id="m-pnl" style="color:var(--green)">$0.00</div><div class="metric-sub" id="m-pnlpct">0.00%</div></div>
+      <div class="metric"><div class="metric-label">USDT Libre</div><div class="metric-value" id="m-usdt" style="color:var(--accent)">$0.00</div><div class="metric-sub">Disponible</div></div>
+      <div class="metric"><div class="metric-label">Ganancias realizadas</div><div class="metric-value" id="m-gains" style="color:var(--green)">$0.00</div><div class="metric-sub" id="m-gains-ars">≈ ARS $0</div></div>
+    </div>
+
+    <div id="real-balances" class="card" style="display:none">
+      <div style="color:var(--green);font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:8px">BALANCE REAL BINANCE</div>
+      <div class="balance-chips" id="balance-chips"></div>
+    </div>
+
+    <div class="card" id="bot-control-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-weight:700;font-size:14px">Bot Automático</div>
+          <div style="color:var(--ts);font-size:12px;margin-top:3px" id="bot-info">Configura el bot primero</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondary" onclick="fetchPrices()">↻ Actualizar</button>
+          <button id="botBtn" class="btn-green" onclick="toggleBot()">▶ Iniciar Bot</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="positions-card" style="display:none">
+      <div style="color:var(--ts);font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:10px">POSICIONES ABIERTAS</div>
+      <div id="positions-list"></div>
+    </div>
+
+    <div class="card">
+      <div style="color:var(--ts);font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:10px">SEÑALES EN TIEMPO REAL</div>
+      <div class="signals-grid" id="signals-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MARKETS -->
+<div id="tab-markets" class="section">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="font-weight:700;font-size:15px">Precios Reales — Binance</div>
+    <button class="btn-secondary" onclick="fetchAllMarkets()">↻ Actualizar</button>
+  </div>
+  <div class="signals-grid" id="markets-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))"></div>
+</div>
+
+<!-- HISTORY -->
+<div id="tab-history" class="section">
+  <div style="font-weight:700;font-size:15px;margin-bottom:14px">Historial de Operaciones</div>
+  <div id="history-empty" style="text-align:center;padding:60px 20px;color:var(--ts)">
+    <div style="font-size:36px;margin-bottom:10px">📋</div>
+    <div>Sin operaciones aún.</div>
+  </div>
+  <div id="history-table" style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:none">
+    <div class="table-header"><span>HORA</span><span>PAR</span><span>ACCIÓN</span><span>PRECIO</span><span>P&L</span></div>
+    <div id="history-rows"></div>
+  </div>
+</div>
+
+<!-- WITHDRAW -->
+<div id="tab-withdraw" class="section">
+  <div class="card">
+    <div style="color:var(--ts);font-size:11px;margin-bottom:4px">GANANCIAS REALIZADAS</div>
+    <div style="font-size:34px;font-weight:900;color:var(--green);margin:10px 0" id="w-gains">$0.00 USD</div>
+    <div style="color:var(--ts);font-size:13px" id="w-gains-ars">≈ ARS $0</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Enviar a Billetera</div>
+    <div class="field"><label>Red / Destino</label>
+      <select><option>Binance Pay (email/ID)</option><option>USDT TRC-20 (Tron)</option><option>USDT ERC-20 (Ethereum)</option><option>BEP-20 (BSC)</option></select>
+    </div>
+    <div class="field"><label>Dirección o ID destino</label><input placeholder="Pega la dirección aquí" style="font-family:monospace"></div>
+    <div class="field"><label>Monto a retirar (USD)</label><input type="number" id="withdrawAmt" placeholder="0.00"></div>
+    <div class="warning">⚠️ El retiro se ejecuta en tu cuenta Binance real. Confirmá siempre con <strong>2FA</strong> antes de aprobar.</div>
+    <button class="btn-primary" style="background:var(--green);color:#060B14" onclick="initiateWithdraw()">Iniciar Retiro</button>
+  </div>
+  <div class="card">
+    <div style="font-weight:600;font-size:13px;margin-bottom:10px">Resumen de cuenta</div>
+    <div id="summary-rows"></div>
+  </div>
+</div>
+
+</div><!-- end content -->
+
+<!-- TOAST -->
+<div class="toast hidden" id="toast">
+  <span id="toast-icon">ℹ️</span>
+  <span id="toast-msg" style="font-size:13px;line-height:1.4"></span>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+let state = {
+  connected: false,
+  backendURL: "",
+  strategy: "rsi",
+  riskPct: 2,
+  selectedSyms: ["BTCUSDT","ETHUSDT"],
+  botActive: false,
+  botInterval: null,
+  prices: {},
+  candles: {},
+  signals: {},
+  portfolio: { usdt:0, positions:{}, totalStart:0 },
+  trades: [],
+  gains: 0,
+  arsRate: 1250,
+};
+
+const ALL_SYMS = ["BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT","XRPUSDT","ADAUSDT","DOGEUSDT","AVAXUSDT","EURUSDT","GBPUSDT"];
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  event.target.classList.add('active');
+  if(id==='markets') fetchAllMarkets();
+  if(id==='dashboard') renderDashboard();
+  if(id==='withdraw') renderWithdraw();
+  if(id==='history') renderHistory();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type="info") {
+  const icons = {info:"ℹ️", buy:"🟢", sell:"🔴", error:"⛔"};
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast-icon').textContent = icons[type]||"ℹ️";
+  const t = document.getElementById('toast');
+  t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.add('hidden'), 4000);
+}
+
+// ── Capital ───────────────────────────────────────────────────────────────
+function getTotalUSD() {
+  const ars = parseFloat(document.getElementById('capARS').value)||0;
+  const usd = parseFloat(document.getElementById('capUSD').value)||0;
+  const rate = parseFloat(document.getElementById('arsRate').value)||1250;
+  state.arsRate = rate;
+  return usd + ars/rate;
+}
+['capARS','capUSD','arsRate'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', ()=>{
+    const t = getTotalUSD();
+    document.getElementById('totalUSD').textContent = `$${t.toFixed(2)} USD`;
+    updateRisk(document.getElementById('riskRange').value);
+  });
+});
+
+function updateRisk(v) {
+  state.riskPct = parseFloat(v);
+  document.getElementById('riskLabel').textContent = v+'%';
+  const t = getTotalUSD();
+  const perTrade = t*(v/100);
+  const rate = parseFloat(document.getElementById('arsRate').value)||1250;
+  document.getElementById('riskInfo').innerHTML =
+    `Por trade: <strong style="color:#EAECEF">$${perTrade.toFixed(2)} USD</strong> ≈ <strong style="color:#EAECEF">ARS $${(perTrade*rate).toLocaleString('es-AR',{maximumFractionDigits:0})}</strong>`;
+}
+
+// ── Strategy ──────────────────────────────────────────────────────────────
+function selectStrategy(id, el) {
+  document.querySelectorAll('.strategy').forEach(s=>s.classList.remove('selected'));
+  el.classList.add('selected');
+  state.strategy = id;
+}
+
+// ── Sym toggle ────────────────────────────────────────────────────────────
+function toggleSym(sym, el) {
+  el.classList.toggle('active');
+  if(state.selectedSyms.includes(sym)) {
+    state.selectedSyms = state.selectedSyms.filter(s=>s!==sym);
+  } else {
+    state.selectedSyms.push(sym);
+  }
+}
+
+// ── Indicators ────────────────────────────────────────────────────────────
+function calcRSI(closes, p=14) {
+  if(closes.length<p+1) return null;
+  let g=0,l=0;
+  for(let i=closes.length-p;i<closes.length;i++){const d=closes[i]-closes[i-1];if(d>0)g+=d;else l+=Math.abs(d);}
+  const rs=l===0?100:(g/p)/(l/p);
+  return 100-100/(1+rs);
+}
+function calcEMA(arr,p){const k=2/(p+1);let e=arr[0];for(let i=1;i<arr.length;i++)e=arr[i]*k+e*(1-k);return e;}
+function calcMACD(closes){
+  if(closes.length<27)return null;
+  const l=closes.length;
+  return{line:calcEMA(closes.slice(-12),12)-calcEMA(closes.slice(-26),26),prevLine:calcEMA(closes.slice(l-13,l-1),12)-calcEMA(closes.slice(l-27,l-1),26)};
+}
+function calcBB(closes,p=20){
+  if(closes.length<p)return null;
+  const sl=closes.slice(-p),mean=sl.reduce((a,b)=>a+b,0)/p;
+  const std=Math.sqrt(sl.reduce((a,b)=>a+Math.pow(b-mean,2),0)/p);
+  return{upper:mean+2*std,lower:mean-2*std};
+}
+function evalSignal(candles, strategy) {
+  const closes=candles.map(c=>c.close), price=closes[closes.length-1];
+  const rsi=calcRSI(closes),macd=calcMACD(closes),bb=calcBB(closes);
+  const rsiBuy=rsi!==null&&rsi<30,rsiSell=rsi!==null&&rsi>70;
+  const macdBuy=macd!==null&&macd.prevLine<0&&macd.line>0,macdSell=macd!==null&&macd.prevLine>0&&macd.line<0;
+  const bbBuy=bb!==null&&price<bb.lower,bbSell=bb!==null&&price>bb.upper;
+  let action="HOLD";
+  if(strategy==="rsi") action=rsiBuy?"BUY":rsiSell?"SELL":"HOLD";
+  if(strategy==="macd") action=macdBuy?"BUY":macdSell?"SELL":"HOLD";
+  if(strategy==="bb") action=bbBuy?"BUY":bbSell?"SELL":"HOLD";
+  if(strategy==="combo"){const b=[rsiBuy,macdBuy,bbBuy].filter(Boolean).length,s=[rsiSell,macdSell,bbSell].filter(Boolean).length;action=b>=2?"BUY":s>=2?"SELL":"HOLD";}
+  return{action,rsi,price};
+}
+
+// ── Connect ───────────────────────────────────────────────────────────────
+async function handleConnect() {
+  const url = document.getElementById('backendURL').value.trim();
+  if(!url){toast("Ingresa la URL de Railway","error");return;}
+  state.backendURL = url;
+  document.getElementById('connectBtn').textContent = "Conectando...";
+  document.getElementById('connectBtn').disabled = true;
+  try {
+    const res = await fetch(url.replace(/\/$/,"")+"/health");
+    if(!res.ok) throw new Error("Backend no responde");
+    const data = await res.json();
+    if(!data.ok) throw new Error("Health check fallido");
+
+    // Intentar obtener balance real
+    try {
+      const acc = await fetch(url.replace(/\/$/,"")+"/api/account");
+      if(acc.ok){
+        const accData = await acc.json();
+        if(accData.balances){
+          const chips = accData.balances.map(b=>`<div class="chip"><strong>${b.asset}</strong> <span style="color:var(--ts)">${parseFloat(b.free).toFixed(4)}</span></div>`).join('');
+          document.getElementById('balance-chips').innerHTML = chips;
+          document.getElementById('real-balances').style.display='block';
+          const usdt = accData.balances.find(b=>b.asset==="USDT");
+          if(usdt) state.portfolio.usdt = parseFloat(usdt.free);
+        }
+      }
+    } catch(e){}
+
+    const totalUSD = getTotalUSD();
+    if(state.portfolio.usdt===0) state.portfolio.usdt = totalUSD;
+    state.portfolio.totalStart = state.portfolio.usdt;
+    state.connected = true;
+
+    document.getElementById('connBadge').textContent = "● Conectado";
+    document.getElementById('connBadge').style.color = "var(--green)";
+    document.getElementById('connBadge').style.borderColor = "var(--green)";
+    document.getElementById('step3num').textContent = "✓";
+    document.getElementById('step3num').classList.add('done');
+    document.getElementById('step4num').classList.add('active');
+    document.getElementById('step4text').classList.add('active');
+
+    toast("✅ Conectado a Railway + Binance!", "buy");
+    fetchPrices();
+    showTab('dashboard');
+    document.querySelectorAll('.tab')[1].click();
+  } catch(e) {
+    toast("Error: "+e.message, "error");
+  }
+  document.getElementById('connectBtn').textContent = "Conectar a Binance →";
+  document.getElementById('connectBtn').disabled = false;
+}
+
+// ── Fetch prices ──────────────────────────────────────────────────────────
+async function fetchPrices() {
+  for(const sym of state.selectedSyms){
+    try {
+      const [pt, kl] = await Promise.all([
+        fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${sym}`).then(r=>r.json()),
+        fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=1h&limit=60`).then(r=>r.json()),
+      ]);
+      state.prices[sym] = parseFloat(pt.price);
+      state.candles[sym] = kl.map(k=>({open:parseFloat(k[1]),high:parseFloat(k[2]),low:parseFloat(k[3]),close:parseFloat(k[4]),time:k[0]}));
+      state.signals[sym] = state.candles[sym].length>20 ? evalSignal(state.candles[sym], state.strategy) : {action:"HOLD",rsi:null,price:state.prices[sym]};
+    } catch(e){}
+  }
+  renderSignals();
+  renderDashboard();
+}
+
+async function fetchAllMarkets() {
+  const grid = document.getElementById('markets-grid');
+  grid.innerHTML = '<div style="color:var(--ts);padding:20px">Cargando precios...</div>';
+  const syms = [...ALL_SYMS];
+  const results = {};
+  await Promise.all(syms.map(async sym=>{
+    try {
+      const [pt,kl] = await Promise.all([
+        fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${sym}`).then(r=>r.json()),
+        fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=1h&limit=30`).then(r=>r.json()),
+      ]);
+      results[sym] = {price:parseFloat(pt.price), candles:kl.map(k=>({close:parseFloat(k[4])}))};
+    } catch(e){}
+  }));
+  grid.innerHTML = syms.map(sym=>{
+    const d = results[sym];
+    if(!d) return `<div class="signal-card"><div style="font-weight:700">${sym.replace('USDT','')}</div><div style="color:var(--ts);font-size:11px">Error</div></div>`;
+    const closes = d.candles.map(c=>c.close);
+    const prev = closes.length>24?closes[closes.length-25]:closes[0];
+    const chg = prev?((d.price-prev)/prev*100):0;
+    const sig = closes.length>20?evalSignal(d.candles,state.strategy):{action:"HOLD"};
+    const col = sig.action==="BUY"?"buy":sig.action==="SELL"?"sell":"";
+    return `<div class="signal-card ${col}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-weight:700;font-size:13px">${sym.replace('USDT','')}</span>
+        <span class="signal-badge ${sig.action}">${sig.action}</span>
+      </div>
+      <div style="font-weight:800;font-size:15px">$${d.price.toLocaleString(undefined,{maximumFractionDigits:4})}</div>
+      <div style="font-size:11px;color:${chg>=0?'var(--green)':'var(--red)'};margin-top:2px">${chg>=0?'+':''}${chg.toFixed(2)}%</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Render signals ────────────────────────────────────────────────────────
+function renderSignals() {
+  const grid = document.getElementById('signals-grid');
+  grid.innerHTML = state.selectedSyms.map(sym=>{
+    const p = state.prices[sym], sig = state.signals[sym];
+    if(!sig) return `<div class="signal-card"><div style="font-weight:700;font-size:13px">${sym.replace('USDT','')}</div><div style="color:var(--ts);font-size:11px">Cargando...</div></div>`;
+    const kl = state.candles[sym]?.map(c=>c.close)||[];
+    const prev = kl.length>24?kl[kl.length-25]:kl[0];
+    const chg = prev&&p?((p-prev)/prev*100):0;
+    const col = sig.action==="BUY"?"buy":sig.action==="SELL"?"sell":"";
+    return `<div class="signal-card ${col}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <span style="font-weight:700;font-size:13px">${sym.replace('USDT','')}</span>
+        <span class="signal-badge ${sig.action}">${sig.action}</span>
+      </div>
+      <div style="font-weight:700;font-size:14px">$${p?p.toLocaleString(undefined,{maximumFractionDigits:4}):'--'}</div>
+      <div style="font-size:11px;color:${chg>=0?'var(--green)':'var(--red)'};margin-top:2px">${chg>=0?'+':''}${chg.toFixed(2)}%</div>
+      ${sig.rsi?`<div style="color:var(--ts);font-size:10px;margin-top:5px">RSI ${sig.rsi.toFixed(1)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────
+function renderDashboard() {
+  if(!state.connected){document.getElementById('noconn').style.display='block';document.getElementById('dashboard-content').style.display='none';return;}
+  document.getElementById('noconn').style.display='none';
+  document.getElementById('dashboard-content').style.display='block';
+
+  const posVal = Object.entries(state.portfolio.positions).reduce((s,[sym,pos])=>s+(state.prices[sym]||pos.entry)*pos.qty,0);
+  const total = state.portfolio.usdt + posVal;
+  const pnl = total - state.portfolio.totalStart;
+  const pnlPct = state.portfolio.totalStart>0?(pnl/state.portfolio.totalStart)*100:0;
+
+  document.getElementById('m-total').textContent = `$${total.toFixed(2)}`;
+  document.getElementById('m-pnl').textContent = `${pnl>=0?'+':''}$${pnl.toFixed(2)}`;
+  document.getElementById('m-pnl').style.color = pnl>=0?'var(--green)':'var(--red)';
+  document.getElementById('m-pnlpct').textContent = `${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%`;
+  document.getElementById('m-usdt').textContent = `$${state.portfolio.usdt.toFixed(2)}`;
+  document.getElementById('m-gains').textContent = `$${state.gains.toFixed(2)}`;
+  document.getElementById('m-gains-ars').textContent = `≈ ARS $${(state.gains*state.arsRate).toLocaleString('es-AR',{maximumFractionDigits:0})}`;
+  document.getElementById('bot-info').textContent = `${['RSI Reversión','MACD Cruce','Bollinger Bands','Combo 2/3'][['rsi','macd','bb','combo'].indexOf(state.strategy)]} · Riesgo ${state.riskPct}% · ${state.selectedSyms.length} pares`;
+
+  // Positions
+  const pos = Object.entries(state.portfolio.positions);
+  if(pos.length>0){
+    document.getElementById('positions-card').style.display='block';
+    document.getElementById('positions-list').innerHTML = pos.map(([sym,p])=>{
+      const cp=state.prices[sym]||p.entry, upnl=(cp-p.entry)*p.qty, upct=(cp-p.entry)/p.entry*100;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div><span style="font-weight:700;font-size:13px">${sym.replace('USDT','')}</span><span style="color:var(--ts);font-size:11px;margin-left:8px">${p.qty.toFixed(6)} u</span></div>
+        <div style="text-align:right"><div style="font-weight:600">$${(cp*p.qty).toFixed(2)}</div><div style="font-size:11px;color:${upnl>=0?'var(--green)':'var(--red)'}">${upnl>=0?'+':''}${upnl.toFixed(2)} (${upct.toFixed(2)}%)</div></div>
+      </div>`;
+    }).join('');
+  }
+  renderSignals();
+}
+
+// ── Bot ───────────────────────────────────────────────────────────────────
+function toggleBot() {
+  state.botActive = !state.botActive;
+  const btn = document.getElementById('botBtn');
+  const dot = document.getElementById('botDot');
+  const lbl = document.getElementById('botLabel');
+  if(state.botActive){
+    btn.textContent="⏹ Detener"; btn.className="btn-red";
+    dot.classList.add('active'); lbl.textContent="BOT ON"; lbl.style.color="var(--green)";
+    toast("Bot iniciado — revisando señales cada 60s","info");
+    state.botInterval = setInterval(botLoop, 60000);
+    botLoop();
+  } else {
+    btn.textContent="▶ Iniciar Bot"; btn.className="btn-green";
+    dot.classList.remove('active'); lbl.textContent="BOT OFF"; lbl.style.color="var(--ts)";
+    clearInterval(state.botInterval);
+    toast("Bot detenido","info");
+  }
+}
+
+async function botLoop() {
+  await fetchPrices();
+  for(const [sym,sig] of Object.entries(state.signals)){
+    if(sig.action==="BUY"||sig.action==="SELL") await executeOrder(sym, sig.action, sig.price);
+  }
+}
+
+async function executeOrder(sym, side, price) {
+  const tradeUSD = state.portfolio.usdt*(state.riskPct/100);
+  if(side==="BUY"&&state.portfolio.usdt<tradeUSD) return;
+  if(side==="SELL"&&!state.portfolio.positions[sym]) return;
+  const qty = side==="BUY" ? parseFloat((tradeUSD/price).toFixed(6)) : state.portfolio.positions[sym].qty;
+
+  // Enviar orden real al backend
+  if(state.connected && state.backendURL){
+    try {
+      const res = await fetch(state.backendURL.replace(/\/$/,"")+"/api/order",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({symbol:sym, side, type:"MARKET", quantity:qty})
+      });
+      const data = await res.json();
+      if(data.error) { toast(`Error orden: ${data.error}`,"error"); return; }
+      toast(`${side} ${sym}: Orden #${data.orderId} ejecutada ✅`, side==="BUY"?"buy":"sell");
+    } catch(e){ toast(`Error enviando orden: ${e.message}`,"error"); return; }
+  }
+
+  if(side==="BUY"){
+    state.portfolio.usdt -= tradeUSD;
+    state.portfolio.positions[sym] = {qty, entry:price, value:tradeUSD};
+    state.trades.unshift({sym, action:"BUY", price, qty, time:new Date().toLocaleTimeString(), pnl:null});
+  } else {
+    const pos=state.portfolio.positions[sym], curVal=pos.qty*price, pnl=curVal-pos.value;
+    state.gains += pnl;
+    state.portfolio.usdt += curVal;
+    delete state.portfolio.positions[sym];
+    state.trades.unshift({sym, action:"SELL", price, qty:pos.qty, time:new Date().toLocaleTimeString(), pnl});
+    toast(`VENTA ${sym}: P&L ${pnl>=0?'+':''}$${pnl.toFixed(2)}`, pnl>=0?"buy":"sell");
+  }
+  state.trades = state.trades.slice(0,100);
+  renderDashboard();
+}
+
+// ── History ───────────────────────────────────────────────────────────────
+function renderHistory() {
+  if(state.trades.length===0){
+    document.getElementById('history-empty').style.display='block';
+    document.getElementById('history-table').style.display='none';
+    return;
+  }
+  document.getElementById('history-empty').style.display='none';
+  document.getElementById('history-table').style.display='block';
+  document.getElementById('history-rows').innerHTML = state.trades.map(t=>`
+    <div class="table-row">
+      <span style="color:var(--ts)">${t.time}</span>
+      <span style="font-weight:600">${t.sym.replace('USDT','')}</span>
+      <span style="font-weight:700;color:${t.action==='BUY'?'var(--green)':'var(--red)'}">${t.action}</span>
+      <span>$${t.price.toLocaleString(undefined,{maximumFractionDigits:4})}</span>
+      <span style="font-weight:600;color:${t.pnl===null?'var(--ts)':t.pnl>=0?'var(--green)':'var(--red)'}">
+        ${t.pnl===null?"Abierta":`${t.pnl>=0?'+':''}$${t.pnl.toFixed(2)}`}
+      </span>
+    </div>`).join('');
+}
+
+// ── Withdraw ──────────────────────────────────────────────────────────────
+function renderWithdraw() {
+  const posVal = Object.entries(state.portfolio.positions).reduce((s,[sym,pos])=>s+(state.prices[sym]||pos.entry)*pos.qty,0);
+  const total = state.portfolio.usdt + posVal;
+  const pnl = total - state.portfolio.totalStart;
+  document.getElementById('w-gains').textContent = `$${state.gains.toFixed(2)} USD`;
+  document.getElementById('w-gains-ars').textContent = `≈ ARS $${(state.gains*state.arsRate).toLocaleString('es-AR',{maximumFractionDigits:0})}`;
+  document.getElementById('summary-rows').innerHTML = [
+    {l:"Capital inicial", v:`$${state.portfolio.totalStart.toFixed(2)} USD`},
+    {l:"Capital actual", v:`$${total.toFixed(2)} USD`},
+    {l:"P&L total", v:`${pnl>=0?'+':''}$${pnl.toFixed(2)} USD`, c:pnl>=0?'var(--green)':'var(--red)'},
+    {l:"Ganancias realizadas", v:`$${state.gains.toFixed(2)} USD`, c:'var(--green)'},
+    {l:"Total en ARS", v:`$${(total*state.arsRate).toLocaleString('es-AR',{maximumFractionDigits:0})}`, c:'var(--accent)'},
+  ].map(r=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--ts);font-size:13px">${r.l}</span><span style="font-weight:600;font-size:13px;color:${r.c||'#EAECEF'}">${r.v}</span></div>`).join('');
+}
+
+function initiateWithdraw() {
+  toast("Instrucción de retiro enviada. Confirmá con 2FA en Binance.","info");
+}
+
+// Init
+document.getElementById('totalUSD').textContent = `$0.00 USD`;
+</script>
+</body>
+</html>
