@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradingBot AR — Binance 24/7</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#060B14;color:#EAECEF;font-family:'Inter',system-ui,sans-serif;min-height:100vh}
+:root{--accent:#F0B90B;--green:#0ECB81;--red:#F6465D;--panel:#0D1520;--card:#111E2E;--border:#1A2D45;--ts:#848E9C}
+input,select,button{font-family:inherit;outline:none}
+button{cursor:pointer}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.header{background:var(--panel);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:100}
+.logo{width:32px;height:32px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#060B14}
+.tabs{background:var(--panel);border-bottom:1px solid var(--border);display:flex;overflow-x:auto}
+.tab{padding:12px 16px;font-size:13px;font-weight:600;border:none;background:transparent;color:var(--ts);border-bottom:2px solid transparent;white-space:nowrap;cursor:pointer}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.content{max-width:900px;margin:0 auto;padding:16px}
+.section{display:none}.section.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
+.card-title{color:var(--accent);font-weight:700;font-size:14px;margin-bottom:12px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.metric{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px}
+.metric-label{color:var(--ts);font-size:11px;margin-bottom:5px}
+.metric-value{font-size:20px;font-weight:800}
+.metric-sub{color:var(--ts);font-size:11px;margin-top:3px}
+.field{margin-bottom:12px}
+.field label{color:var(--ts);font-size:12px;display:block;margin-bottom:5px}
+.field input,.field select{width:100%;background:#0D1520;border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:#EAECEF;font-size:14px}
+.btn-primary{width:100%;background:var(--accent);color:#060B14;border:none;border-radius:10px;padding:13px;font-weight:800;font-size:14px}
+.btn-green{background:var(--green);border:none;border-radius:8px;padding:10px 22px;color:#060B14;font-weight:700;font-size:13px}
+.btn-red{background:transparent;border:1px solid var(--red);border-radius:8px;padding:10px 22px;color:var(--red);font-weight:700;font-size:13px}
+.btn-secondary{background:#1A2D45;border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--ts);font-size:12px;font-weight:600}
+.strategy{padding:11px 13px;border-radius:9px;margin-bottom:7px;cursor:pointer;background:#0D1520;border:1px solid var(--border)}
+.strategy.selected{background:#F0B90B18;border-color:var(--accent)}
+.strategy-label{font-weight:600;font-size:13px;color:#EAECEF}
+.strategy.selected .strategy-label{color:var(--accent)}
+.strategy-desc{color:var(--ts);font-size:11px;margin-top:2px}
+.signals-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.signal-card{background:#0D1520;border:1px solid var(--border);border-radius:10px;padding:12px}
+.signal-card.buy{border-color:var(--green)}.signal-card.sell{border-color:var(--red)}
+.signal-badge{font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px}
+.signal-badge.BUY{background:#0ECB8122;color:var(--green)}
+.signal-badge.SELL{background:#F6465D22;color:var(--red)}
+.signal-badge.HOLD{background:#848E9C22;color:var(--ts)}
+.toast{position:fixed;bottom:24px;right:16px;left:16px;z-index:999;background:var(--card);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 24px rgba(0,0,0,.5);max-width:400px;margin:0 auto;transition:opacity .3s}
+.toast.hidden{opacity:0;pointer-events:none}
+.sym-btn{padding:5px 11px;border-radius:7px;font-size:12px;font-weight:600;border:1px solid var(--border);background:#0D1520;color:var(--ts);cursor:pointer}
+.sym-btn.active{border-color:var(--accent);background:#F0B90B18;color:var(--accent)}
+.table-header{display:grid;grid-template-columns:70px 1fr 70px 1fr 80px;padding:9px 14px;background:#0D1520;color:var(--ts);font-size:11px;font-weight:700}
+.table-row{display:grid;grid-template-columns:70px 1fr 70px 1fr 80px;padding:11px 14px;border-top:1px solid var(--border);font-size:12px}
+.warning{background:#F0B90B15;border:1px solid #F0B90B33;border-radius:8px;padding:10px;font-size:12px;color:var(--ts);line-height:1.5;margin-bottom:12px}
+.server-badge{background:#0ECB8122;border:1px solid var(--green);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;color:var(--green)}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinning{animation:spin 1s linear infinite;display:inline-block}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="logo">B</div>
+    <div>
+      <div style="font-weight:800;font-size:15px">TradingBot AR</div>
+      <div style="color:var(--ts);font-size:10px">Binance Real · 24/7 en servidor</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div id="botStatusBadge" style="display:none" class="server-badge">🟢 BOT ON</div>
+    <div id="connBadge" style="background:#1A2D45;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--ts)">○ Sin conectar</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('setup',this)">Configurar</button>
+  <button class="tab" onclick="showTab('dashboard',this)">Dashboard</button>
+  <button class="tab" onclick="showTab('markets',this)">Mercados</button>
+  <button class="tab" onclick="showTab('history',this)">Historial</button>
+  <button class="tab" onclick="showTab('withdraw',this)">Retirar</button>
+</div>
+
+<div class="content">
+
+<!-- SETUP -->
+<div id="tab-setup" class="section active">
+  <div class="card" style="border-color:var(--green)">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:20px">🚀</span>
+      <span style="font-weight:700;color:var(--green);font-size:14px">Bot 24/7 en Railway</span>
+    </div>
+    <div style="color:var(--ts);font-size:13px;line-height:1.6">El bot corre en tu servidor Railway <strong style="color:#EAECEF">las 24 horas</strong>, incluso con el celular apagado. Esta app solo sirve para configurarlo y ver el estado.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">URL del Backend Railway</div>
+    <div class="field">
+      <label>Tu URL de Railway</label>
+      <input id="backendURL" placeholder="https://binance-poxy-production.up.railway.app" type="url">
+    </div>
+    <button class="btn-primary" onclick="handleConnect()" id="connectBtn">Conectar →</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Capital</div>
+    <div style="color:var(--ts);font-size:12px;line-height:1.6;margin-bottom:10px">El capital se lee directo de tu balance real en Bybit — no hace falta cargarlo acá. Cualquier USDT que tengas disponible en tu cuenta Unified, el bot lo usa automáticamente.</div>
+    <div class="field"><label>Tipo de cambio blue ARS/USD (solo para mostrar equivalencias)</label><input id="arsRate" type="number" value="1250" oninput="updateTotal()"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Estrategia</div>
+    <div class="strategy" onclick="selectStrategy('rsi',this)"><div class="strategy-label">RSI Reversión</div><div class="strategy-desc">Compra &lt;30, vende &gt;70 — más operaciones</div></div>
+    <div class="strategy" onclick="selectStrategy('macd',this)"><div class="strategy-label">MACD Cruce</div><div class="strategy-desc">Opera en cruce de líneas</div></div>
+    <div class="strategy" onclick="selectStrategy('bb',this)"><div class="strategy-label">Bollinger Bands</div><div class="strategy-desc">Rebote en bandas extremas</div></div>
+    <div class="strategy selected" onclick="selectStrategy('combo',this)"><div class="strategy-label">Combo 2/3 ⭐</div><div class="strategy-desc">2 de 3 indicadores — recomendado</div></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+      <span style="font-weight:700;font-size:14px;color:var(--accent)">Riesgo por trade</span>
+      <span style="font-weight:800;font-size:16px" id="riskLabel">2%</span>
+    </div>
+    <input type="range" min="0.5" max="10" step="0.5" value="2" id="riskRange"
+      oninput="document.getElementById('riskLabel').textContent=this.value+'%'" style="width:100%;accent-color:var(--accent)">
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--ts)">
+      <span>0.5% conservador</span><span>10% agresivo</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Pares a operar</div>
+    <div style="color:var(--ts);font-size:11px;font-weight:700;margin-bottom:8px">CRYPTO</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+      <button class="sym-btn active" onclick="toggleSym('BTCUSDT',this)">BTC</button>
+      <button class="sym-btn active" onclick="toggleSym('ETHUSDT',this)">ETH</button>
+      <button class="sym-btn" onclick="toggleSym('BNBUSDT',this)">BNB</button>
+      <button class="sym-btn" onclick="toggleSym('SOLUSDT',this)">SOL</button>
+      <button class="sym-btn" onclick="toggleSym('XRPUSDT',this)">XRP</button>
+      <button class="sym-btn" onclick="toggleSym('ADAUSDT',this)">ADA</button>
+      <button class="sym-btn" onclick="toggleSym('DOGEUSDT',this)">DOGE</button>
+      <button class="sym-btn" onclick="toggleSym('AVAXUSDT',this)">AVAX</button>
+    </div>
+    <div style="color:var(--ts);font-size:11px;font-weight:700;margin-bottom:8px">FOREX</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <button class="sym-btn" onclick="toggleSym('EURUSDT',this)">EUR/USD</button>
+      <button class="sym-btn" onclick="toggleSym('GBPUSDT',this)">GBP/USD</button>
+    </div>
+  </div>
+
+  <button class="btn-primary" id="startBtn" onclick="startBot()" style="opacity:.5" disabled>
+    ▶ Iniciar Bot en Servidor 24/7
+  </button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="tab-dashboard" class="section">
+  <div id="noconn" style="text-align:center;padding:60px 20px">
+    <div style="font-size:44px;margin-bottom:14px">🔌</div>
+    <div style="font-size:20px;font-weight:800;margin-bottom:8px">No conectado</div>
+    <div style="color:var(--ts);margin-bottom:20px">Configurá el bot primero</div>
+    <button class="btn-primary" style="max-width:200px;margin:0 auto;display:block" onclick="showTab('setup',document.querySelectorAll('.tab')[0])">Configurar →</button>
+  </div>
+  <div id="dash-content" style="display:none">
+    <div class="grid-2">
+      <div class="metric"><div class="metric-label">Capital Total</div><div class="metric-value" id="m-total">$0.00</div><div class="metric-sub">USD</div></div>
+      <div class="metric"><div class="metric-label">P&L</div><div class="metric-value" id="m-pnl" style="color:var(--green)">$0.00</div><div class="metric-sub" id="m-pnlpct">0.00%</div></div>
+      <div class="metric"><div class="metric-label">USDT Libre</div><div class="metric-value" id="m-usdt" style="color:var(--accent)">$0.00</div><div class="metric-sub">Disponible</div></div>
+      <div class="metric"><div class="metric-label">Ganancias</div><div class="metric-value" id="m-gains" style="color:var(--green)">$0.00</div><div class="metric-sub" id="m-gains-ars">≈ ARS $0</div></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-weight:700;font-size:14px">Bot en Servidor Railway</div>
+          <div style="color:var(--ts);font-size:12px;margin-top:3px" id="bot-info-dash">—</div>
+          <div style="color:var(--ts);font-size:11px;margin-top:2px" id="last-update">—</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-secondary" onclick="refreshStatus()">↻ Actualizar</button>
+          <button class="btn-red" onclick="resetBot()">⟲ Reset</button>
+          <button id="dashBotBtn" class="btn-green" onclick="toggleBotFromDash()">▶ Iniciar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="positions-card" style="display:none">
+      <div style="color:var(--ts);font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:10px">POSICIONES ABIERTAS</div>
+      <div id="positions-list"></div>
+    </div>
+
+    <div class="card">
+      <div style="color:var(--ts);font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:10px">SEÑALES EN TIEMPO REAL</div>
+      <div class="signals-grid" id="signals-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MARKETS -->
+<div id="tab-markets" class="section">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="font-weight:700;font-size:15px">Precios Reales — Binance</div>
+    <button class="btn-secondary" onclick="fetchMarkets()">↻ Actualizar</button>
+  </div>
+  <div class="signals-grid" id="markets-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr))"></div>
+</div>
+
+<!-- HISTORY -->
+<div id="tab-history" class="section">
+  <div style="font-weight:700;font-size:15px;margin-bottom:14px">Historial de Operaciones</div>
+  <div id="history-empty" style="text-align:center;padding:60px 20px;color:var(--ts)">
+    <div style="font-size:36px;margin-bottom:10px">📋</div>
+    <div>Sin operaciones aún.</div>
+    <div style="font-size:12px;margin-top:4px">El bot registra cada compra y venta aquí.</div>
+  </div>
+  <div id="history-table" style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:none">
+    <div class="table-header"><span>HORA</span><span>PAR</span><span>ACCIÓN</span><span>PRECIO</span><span>P&L</span></div>
+    <div id="history-rows"></div>
+  </div>
+</div>
+
+<!-- WITHDRAW -->
+<div id="tab-withdraw" class="section">
+  <div class="card">
+    <div style="color:var(--ts);font-size:11px;margin-bottom:4px">GANANCIAS REALIZADAS</div>
+    <div style="font-size:34px;font-weight:900;color:var(--green);margin:10px 0" id="w-gains">$0.00 USD</div>
+    <div style="color:var(--ts);font-size:13px" id="w-gains-ars">≈ ARS $0</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Enviar a Billetera</div>
+    <div class="field"><label>Red / Destino</label>
+      <select><option>Binance Pay (email/ID)</option><option>USDT TRC-20 (Tron)</option><option>USDT ERC-20 (Ethereum)</option><option>BEP-20 (BSC)</option></select>
+    </div>
+    <div class="field"><label>Dirección o ID destino</label><input placeholder="Pega la dirección aquí" style="font-family:monospace"></div>
+    <div class="field"><label>Monto a retirar (USD)</label><input type="number" placeholder="0.00"></div>
+    <div class="warning">⚠️ Confirmá siempre con <strong style="color:var(--accent)">2FA</strong> en Binance antes de aprobar el retiro.</div>
+    <button class="btn-primary" style="background:var(--green);color:#060B14" onclick="toast('Instrucción enviada. Confirmá con 2FA en Binance.','info')">Iniciar Retiro</button>
+  </div>
+  <div class="card">
+    <div style="font-weight:600;font-size:13px;margin-bottom:10px">Resumen</div>
+    <div id="summary-rows"></div>
+  </div>
+</div>
+
+</div>
+
+<div class="toast hidden" id="toast">
+  <span id="toast-icon">ℹ️</span>
+  <span id="toast-msg" style="font-size:13px;line-height:1.4"></span>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+const S = {
+  url: localStorage.getItem('backendURL')||"",
+  connected: false,
+  strategy: localStorage.getItem('strategy')||"combo",
+  riskPct: parseFloat(localStorage.getItem('riskPct'))||2,
+  symbols: JSON.parse(localStorage.getItem('symbols')||'["BTCUSDT","ETHUSDT"]'),
+  arsRate: parseFloat(localStorage.getItem('arsRate'))||1250,
+  botActive: false,
+  serverData: null,
+  refreshInterval: null,
+};
+
+// Restaurar UI
+window.addEventListener('load', () => {
+  if(S.url) document.getElementById('backendURL').value = S.url;
+  if(S.arsRate) document.getElementById('arsRate').value = S.arsRate;
+  document.getElementById('riskRange').value = S.riskPct;
+  document.getElementById('riskLabel').textContent = S.riskPct+'%';
+  // Restaurar símbolos
+  document.querySelectorAll('.sym-btn').forEach(btn => {
+    const sym = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
+    if(S.symbols.includes(sym)) btn.classList.add('active');
+    else btn.classList.remove('active');
+  });
+  // Restaurar estrategia
+  document.querySelectorAll('.strategy').forEach(el => el.classList.remove('selected'));
+  const strats = ['rsi','macd','bb','combo'];
+  document.querySelectorAll('.strategy')[strats.indexOf(S.strategy)]?.classList.add('selected');
+  updateTotal();
+  if(S.url) handleConnect(true);
+});
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
+function showTab(id, el) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if(el) el.classList.add('active');
+  if(id==='dashboard') refreshStatus();
+  if(id==='markets') fetchMarkets();
+  if(id==='history') renderHistory();
+  if(id==='withdraw') renderWithdraw();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type="info") {
+  const icons={info:"ℹ️",buy:"🟢",sell:"🔴",error:"⛔"};
+  document.getElementById('toast-msg').textContent=msg;
+  document.getElementById('toast-icon').textContent=icons[type]||"ℹ️";
+  const t=document.getElementById('toast');
+  t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.add('hidden'),4500);
+}
+
+// ── Capital ───────────────────────────────────────────────────────────────
+function updateTotal() {
+  const rate=parseFloat(document.getElementById('arsRate').value)||1250;
+  S.arsRate=rate;
+  localStorage.setItem('arsRate',rate);
+}
+
+function selectStrategy(id,el) {
+  document.querySelectorAll('.strategy').forEach(s=>s.classList.remove('selected'));
+  el.classList.add('selected');
+  S.strategy=id;
+  localStorage.setItem('strategy',id);
+}
+
+function toggleSym(sym,el) {
+  el.classList.toggle('active');
+  if(S.symbols.includes(sym)) S.symbols=S.symbols.filter(s=>s!==sym);
+  else S.symbols.push(sym);
+  localStorage.setItem('symbols',JSON.stringify(S.symbols));
+}
+
+// ── Connect ───────────────────────────────────────────────────────────────
+async function handleConnect(silent=false) {
+  const url=(document.getElementById('backendURL').value||S.url).trim();
+  if(!url){if(!silent)toast("Ingresa la URL de Railway","error");return;}
+  S.url=url;
+  localStorage.setItem('backendURL',url);
+  if(!silent){document.getElementById('connectBtn').textContent="Conectando...";document.getElementById('connectBtn').disabled=true;}
+  try {
+    const res=await fetch(url.replace(/\/$/,"")+"/health");
+    if(!res.ok) throw new Error("Sin respuesta");
+    S.connected=true;
+    document.getElementById('connBadge').textContent="● Conectado";
+    document.getElementById('connBadge').style.cssText="background:#0ECB8122;border:1px solid var(--green);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--green)";
+    document.getElementById('startBtn').disabled=false;
+    document.getElementById('startBtn').style.opacity='1';
+    if(!silent) toast("✅ Conectado a Railway!","buy");
+    await refreshStatus();
+  } catch(e) {
+    if(!silent) toast("Error: "+e.message,"error");
+  }
+  if(!silent){document.getElementById('connectBtn').textContent="Conectar →";document.getElementById('connectBtn').disabled=false;}
+}
+
+// ── Start / Stop bot ──────────────────────────────────────────────────────
+async function startBot() {
+  if(!S.connected){toast("Conectate primero","error");return;}
+  const btn=document.getElementById('startBtn');
+  btn.textContent="Iniciando..."; btn.disabled=true;
+  try {
+    const res=await fetch(S.url.replace(/\/$/,"")+"/bot/start",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({strategy:S.strategy, riskPct:S.riskPct||parseFloat(document.getElementById('riskRange').value), symbols:S.symbols})
+    });
+    const data=await res.json();
+    toast("🚀 Bot iniciado en servidor 24/7!","buy");
+    S.botActive=true;
+    document.getElementById('botStatusBadge').style.display='block';
+    localStorage.setItem('riskPct',document.getElementById('riskRange').value);
+    await refreshStatus();
+    showTab('dashboard', document.querySelectorAll('.tab')[1]);
+    document.querySelectorAll('.tab')[1].classList.add('active');
+    document.querySelectorAll('.tab')[0].classList.remove('active');
+  } catch(e){ toast("Error: "+e.message,"error"); }
+  btn.textContent="▶ Iniciar Bot en Servidor 24/7"; btn.disabled=false;
+}
+
+async function stopBot() {
+  try {
+    await fetch(S.url.replace(/\/$/,"")+"/bot/stop",{method:"POST"});
+    S.botActive=false;
+    document.getElementById('botStatusBadge').style.display='none';
+    toast("Bot detenido","info");
+    await refreshStatus();
+  } catch(e){ toast("Error: "+e.message,"error"); }
+}
+
+async function toggleBotFromDash() {
+  if(S.botActive) await stopBot();
+  else await startBot();
+}
+
+// ── Venta manual de una posición ─────────────────────────────────────────
+async function sellPosition(symbol) {
+  if(!S.connected){toast("Conectate primero","error");return;}
+  if(!confirm(`¿Vender toda la posición de ${symbol.replace('USDT','')} ahora, al precio de mercado?`)) return;
+  try {
+    toast(`Vendiendo ${symbol.replace('USDT','')}...`,"info");
+    const res=await fetch(S.url.replace(/\/$/,"")+"/api/sell-position",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({symbol})
+    });
+    const data=await res.json();
+    if(data.error){ toast("Error: "+(data.error.message||data.error),"error"); return; }
+    toast(`✅ ${symbol.replace('USDT','')} vendido`,"success");
+    await refreshStatus();
+  } catch(e){ toast("Error: "+e.message,"error"); }
+}
+
+// ── Reset ─────────────────────────────────────────────────────────────────
+async function resetBot() {
+  if(!S.connected){toast("Conectate primero","error");return;}
+  if(!confirm("¿Resetear el bot? Esto detiene el bot, borra el historial de operaciones y limpia posiciones trabadas. No afecta tu balance real en Bybit.")) return;
+  try {
+    await fetch(S.url.replace(/\/$/,"")+"/bot/reset",{method:"POST"});
+    S.botActive=false;
+    document.getElementById('botStatusBadge').style.display='none';
+    toast("🔄 Bot reseteado","info");
+    await refreshStatus();
+  } catch(e){ toast("Error: "+e.message,"error"); }
+}
+
+// ── Status refresh ────────────────────────────────────────────────────────
+async function refreshStatus() {
+  if(!S.connected) return;
+  try {
+    // Fuerza sincronización con el balance real de Bybit antes de mostrar datos
+    await fetch(S.url.replace(/\/$/,"")+"/api/sync",{method:"POST"}).catch(()=>{});
+    const res=await fetch(S.url.replace(/\/$/,"")+"/bot/status");
+    const data=await res.json();
+    S.serverData=data;
+    S.botActive=data.active;
+    S.arsRate=parseFloat(localStorage.getItem('arsRate'))||1250;
+    renderDashboard(data);
+  } catch(e){ console.warn("Status error:",e.message); }
+}
+
+// Auto-refresh cada 30s
+setInterval(()=>{ if(S.connected) refreshStatus(); },30000);
+
+// ── Dashboard ─────────────────────────────────────────────────────────────
+function renderDashboard(data) {
+  if(!data){document.getElementById('noconn').style.display='block';document.getElementById('dash-content').style.display='none';return;}
+  document.getElementById('noconn').style.display='none';
+  document.getElementById('dash-content').style.display='block';
+
+  const pnl=data.totalValue-data.portfolio.totalStart;
+  const pnlPct=data.portfolio.totalStart>0?(pnl/data.portfolio.totalStart)*100:0;
+
+  document.getElementById('m-total').textContent=`$${(data.totalValue||0).toFixed(2)}`;
+  document.getElementById('m-pnl').textContent=`${pnl>=0?'+':''}$${pnl.toFixed(2)}`;
+  document.getElementById('m-pnl').style.color=pnl>=0?'var(--green)':'var(--red)';
+  document.getElementById('m-pnlpct').textContent=`${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%`;
+  document.getElementById('m-usdt').textContent=`$${(data.portfolio.usdt||0).toFixed(2)}`;
+  document.getElementById('m-gains').textContent=`$${(data.gains||0).toFixed(2)}`;
+  document.getElementById('m-gains-ars').textContent=`≈ ARS $${((data.gains||0)*S.arsRate).toLocaleString('es-AR',{maximumFractionDigits:0})}`;
+
+  const strats={rsi:'RSI Reversión',macd:'MACD Cruce',bb:'Bollinger',combo:'Combo 2/3'};
+  document.getElementById('bot-info-dash').textContent=`${strats[data.strategy]||data.strategy} · Riesgo ${data.riskPct}% · ${(data.symbols||[]).length} pares`;
+  document.getElementById('last-update').textContent=data.lastUpdate?`Última actualización: ${new Date(data.lastUpdate).toLocaleTimeString()}`:'—';
+
+  const dashBtn=document.getElementById('dashBotBtn');
+  const badge=document.getElementById('botStatusBadge');
+  if(data.active){
+    dashBtn.textContent='⏹ Detener'; dashBtn.className='btn-red';
+    badge.style.display='block'; badge.textContent='🟢 BOT ON';
+  } else {
+    dashBtn.textContent='▶ Iniciar'; dashBtn.className='btn-green';
+    badge.style.display='none';
+  }
+
+  // Posiciones
+  const pos=Object.entries(data.portfolio.positions||{});
+  if(pos.length>0){
+    document.getElementById('positions-card').style.display='block';
+    document.getElementById('positions-list').innerHTML=pos.map(([sym,p])=>{
+      const cp=data.prices[sym]||p.entry, upnl=(cp-p.entry)*p.qty, upct=(cp-p.entry)/p.entry*100;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:8px">
+        <div><span style="font-weight:700;font-size:13px">${sym.replace('USDT','')}</span><span style="color:var(--ts);font-size:11px;margin-left:8px">${p.qty.toFixed(6)}</span></div>
+        <div style="text-align:right"><div style="font-weight:600">$${(cp*p.qty).toFixed(2)}</div><div style="font-size:11px;color:${upnl>=0?'var(--green)':'var(--red)'}">${upnl>=0?'+':''}${upnl.toFixed(2)} (${upct.toFixed(2)}%)</div></div>
+        <button onclick="sellPosition('${sym}')" style="background:var(--red);border:none;color:#fff;font-size:11px;font-weight:700;padding:8px 12px;border-radius:8px;white-space:nowrap">Vender</button>
+      </div>`;
+    }).join('');
+  } else { document.getElementById('positions-card').style.display='none'; }
+
+  // Señales
+  document.getElementById('signals-grid').innerHTML=Object.entries(data.signals||{}).map(([sym,sig])=>{
+    const p=data.prices[sym], ac=sig.action;
+    const col=ac==='BUY'?'buy':ac==='SELL'?'sell':'';
+    return `<div class="signal-card ${col}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <span style="font-weight:700;font-size:13px">${sym.replace('USDT','')}</span>
+        <span class="signal-badge ${ac}">${ac}</span>
+      </div>
+      <div style="font-weight:700;font-size:14px">$${p?p.toLocaleString(undefined,{maximumFractionDigits:4}):'--'}</div>
+      ${sig.rsi?`<div style="color:var(--ts);font-size:10px;margin-top:5px">RSI ${sig.rsi.toFixed(1)}</div>`:''}
+    </div>`;
+  }).join('')||'<div style="color:var(--ts);font-size:13px">Iniciá el bot para ver señales</div>';
+
+  renderHistory(data.trades);
+  renderWithdraw(data);
+}
+
+// ── Markets ───────────────────────────────────────────────────────────────
+const ALL=['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT','EURUSDT','GBPUSDT'];
+async function fetchMarkets() {
+  const grid=document.getElementById('markets-grid');
+  grid.innerHTML='<div style="color:var(--ts);padding:20px">Cargando...</div>';
+  const results={};
+  await Promise.all(ALL.map(async sym=>{
+    try {
+      const [pt,kl]=await Promise.all([
+        fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${sym}`).then(r=>r.json()),
+        fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=1h&limit=30`).then(r=>r.json()),
+      ]);
+      results[sym]={price:parseFloat(pt.price),closes:kl.map(k=>parseFloat(k[4]))};
+    }catch(e){}
+  }));
+  grid.innerHTML=ALL.map(sym=>{
+    const d=results[sym];
+    if(!d)return`<div class="signal-card"><div style="font-weight:700">${sym.replace('USDT','')}</div><div style="color:var(--ts);font-size:11px">Error</div></div>`;
+    const prev=d.closes.length>24?d.closes[d.closes.length-25]:d.closes[0];
+    const chg=prev?((d.price-prev)/prev*100):0;
+    return`<div class="signal-card">
+      <div style="font-weight:700;font-size:13px;margin-bottom:5px">${sym.replace('USDT','')}/USDT</div>
+      <div style="font-weight:800;font-size:15px">$${d.price.toLocaleString(undefined,{maximumFractionDigits:4})}</div>
+      <div style="font-size:11px;color:${chg>=0?'var(--green)':'var(--red)'};margin-top:2px">${chg>=0?'+':''}${chg.toFixed(2)}%</div>
+    </div>`;
+  }).join('');
+}
+
+// ── History ───────────────────────────────────────────────────────────────
+function renderHistory(trades) {
+  trades=trades||S.serverData?.trades||[];
+  if(!trades.length){document.getElementById('history-empty').style.display='block';document.getElementById('history-table').style.display='none';return;}
+  document.getElementById('history-empty').style.display='none';
+  document.getElementById('history-table').style.display='block';
+  document.getElementById('history-rows').innerHTML=trades.map(t=>`
+    <div class="table-row">
+      <span style="color:var(--ts)">${t.time}</span>
+      <span style="font-weight:600">${t.sym.replace('USDT','')}</span>
+      <span style="font-weight:700;color:${t.action==='BUY'?'var(--green)':'var(--red)'}">${t.action}</span>
+      <span>$${t.price.toLocaleString(undefined,{maximumFractionDigits:4})}</span>
+      <span style="font-weight:600;color:${t.pnl===null?'var(--ts)':t.pnl>=0?'var(--green)':'var(--red)'}">
+        ${t.pnl===null?'Abierta':`${t.pnl>=0?'+':''}$${t.pnl.toFixed(2)}`}
+      </span>
+    </div>`).join('');
+}
+
+// ── Withdraw ──────────────────────────────────────────────────────────────
+function renderWithdraw(data) {
+  data=data||S.serverData;
+  const gains=data?.gains||0;
+  const total=data?.totalValue||0;
+  const start=data?.portfolio?.totalStart||0;
+  const pnl=total-start;
+  document.getElementById('w-gains').textContent=`$${gains.toFixed(2)} USD`;
+  document.getElementById('w-gains-ars').textContent=`≈ ARS $${(gains*S.arsRate).toLocaleString('es-AR',{maximumFractionDigits:0})}`;
+  document.getElementById('summary-rows').innerHTML=[
+    {l:"Capital inicial",v:`$${start.toFixed(2)} USD`},
+    {l:"Capital actual",v:`$${total.toFixed(2)} USD`},
+    {l:"P&L total",v:`${pnl>=0?'+':''}$${pnl.toFixed(2)} USD`,c:pnl>=0?'var(--green)':'var(--red)'},
+    {l:"Ganancias realizadas",v:`$${gains.toFixed(2)} USD`,c:'var(--green)'},
+    {l:"Total en ARS",v:`$${(total*S.arsRate).toLocaleString('es-AR',{maximumFractionDigits:0})}`,c:'var(--accent)'},
+  ].map(r=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--ts);font-size:13px">${r.l}</span><span style="font-weight:600;font-size:13px;color:${r.c||'#EAECEF'}">${r.v}</span></div>`).join('');
+}
+</script>
+</body>
+</html>
